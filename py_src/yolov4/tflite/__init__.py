@@ -52,6 +52,7 @@ class YOLOv4:
                 [[142, 110], [192, 243], [459, 401]],
             ]
         self._classes = None
+        self.grid_coord = []
         self.input_index = None
         self.input_size = None
         self.interpreter = None
@@ -142,6 +143,17 @@ class YOLOv4:
                 details["shape"][1] for details in output_details
             ]
         self.output_index = [details["index"] for details in output_details]
+
+        if self.tpu:
+            self.grid_coord = []
+            for i in range(len(self.output_size) // 2):
+                xy_grid = np.meshgrid(
+                    np.arange(self.output_size[i * 2]),
+                    np.arange(self.output_size[i * 2]),
+                )
+                xy_grid = np.stack(xy_grid, axis=-1)
+                xy_grid = xy_grid[np.newaxis, ...]
+                self.grid_coord.append(xy_grid)
 
     def resize_image(self, image, ground_truth=None):
         """

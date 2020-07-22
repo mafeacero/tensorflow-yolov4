@@ -56,6 +56,7 @@ class YOLOv4:
         self.input_size = None
         self.interpreter = None
         self.output_index = None
+        self.output_size = None
         if tiny:
             self.xyscales = [1.05, 1.05]
         else:
@@ -136,6 +137,10 @@ class YOLOv4:
         self.input_size = input_details["shape"][1]
         self.input_index = input_details["index"]
         output_details = self.interpreter.get_output_details()
+        if self.tpu:
+            self.output_size = [
+                details["shape"][1] for details in output_details
+            ]
         self.output_index = [details["index"] for details in output_details]
 
     def resize_image(self, image, ground_truth=None):

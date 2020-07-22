@@ -170,6 +170,23 @@ class YOLOv4:
             image, target_size=self.input_size, ground_truth=ground_truth
         )
 
+    def tpu_hair(self, x):
+        x = [np.split(_x, 3, axis=-1) for _x in x]
+
+        for i in range(len(x) // 2):
+            for j in range(3):
+                # sig
+                txty, _, conf_prob = np.split(x[2 * i][j], (2, 2, -1), axis=-1)
+                # raw
+                _, twth, _ = np.split(x[2 * i + 1][j], (2, 2, -1), axis=-1)
+                txty = (txty - 0.5) * self.xyscales[i] + 0.5
+                bxby = (txty + self.grid_coord[i]) / self.output_size[2 * i]
+                bwbh = (self.anchors[i][j] / self.input_size) * np.exp(twth)
+                x[2 * i] = np.concatenate([bxby, bwbh, conf_prob], axis=-1)
+
+        pred = [x[2 * i] for i in range(len(x) // 2)]
+        return pred
+
     def candidates_to_pred_bboxes(self, candidates):
         """
         @param candidates: Dim(-1, (x, y, w, h, conf, prob_0, prob_1, ...))
@@ -224,6 +241,8 @@ class YOLOv4:
         candidates = [
             self.interpreter.get_tensor(index) for index in self.output_index
         ]
+        if self.tpu:
+            candidates = self.tpu_hair(candidates)
         _candidates = []
         for candidate in candidates:
             grid_size = candidate.shape[1]

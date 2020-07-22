@@ -33,17 +33,57 @@ from ..utility import media, predict
 
 
 class YOLOv4:
-    def __init__(self, tpu: bool = False):
+    def __init__(self, tiny: bool = False, tpu: bool = False):
         """
         Default configuration
         """
+        self.tiny = tiny
         self.tpu = tpu
 
+        if tiny:
+            self.anchors = [
+                [[23, 27], [37, 58], [81, 82]],
+                [[81, 82], [135, 169], [344, 319]],
+            ]
+        else:
+            self.anchors = [
+                [[12, 16], [19, 36], [40, 28]],
+                [[36, 75], [76, 55], [72, 146]],
+                [[142, 110], [192, 243], [459, 401]],
+            ]
         self._classes = None
         self.input_index = None
         self.input_size = None
         self.interpreter = None
         self.output_index = None
+        if tiny:
+            self.xyscales = [1.05, 1.05]
+        else:
+            self.xyscales = [1.2, 1.1, 1.05]
+
+    @property
+    def anchors(self):
+        """
+        Usage:
+            yolo.anchors = [12, 16, 19, 36, 40, 28, 36, 75,
+                            76, 55, 72, 146, 142, 110, 192, 243, 459, 401]
+            yolo.anchors = np.array([12, 16, 19, 36, 40, 28, 36, 75,
+                            76, 55, 72, 146, 142, 110, 192, 243, 459, 401])
+            print(yolo.anchors)
+        """
+        return self._anchors
+
+    @anchors.setter
+    def anchors(self, anchors: Union[list, tuple, np.ndarray]):
+        if isinstance(anchors, (list, tuple)):
+            self._anchors = np.array(anchors)
+        elif isinstance(anchors, np.ndarray):
+            self._anchors = anchors
+
+        if self.tiny:
+            self._anchors = self._anchors.astype(np.float32).reshape(2, 3, 2)
+        else:
+            self._anchors = self._anchors.astype(np.float32).reshape(3, 3, 2)
 
     @property
     def classes(self):
@@ -63,6 +103,23 @@ class YOLOv4:
             self._classes = data
         else:
             raise TypeError("YOLOv4: Set classes path or dictionary")
+
+    @property
+    def xyscales(self):
+        """
+        Usage:
+            yolo.xyscales = [1.2, 1.1, 1.05]
+            yolo.xyscales = np.array([1.2, 1.1, 1.05])
+            print(yolo.xyscales)
+        """
+        return self._xyscales
+
+    @xyscales.setter
+    def xyscales(self, xyscales: Union[list, tuple, np.ndarray]):
+        if isinstance(xyscales, (list, tuple)):
+            self._xyscales = np.array(xyscales)
+        elif isinstance(xyscales, np.ndarray):
+            self._xyscales = xyscales
 
     def load_tflite(self, tflite_path):
         if self.tpu:
